@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "id": "io.github.edmooredop.omakeylight",
+  "name": "omakeylight",
+  "version": "1.0.0",
+  "author": "Ed Moore",
+  "license": "MIT",
+  "description": "Turns your monitor into a key light for video calls. Paints a warm-white layer above the wallpaper but below every window, so browsers and terminals stay usable on top of it. Adjustable colour temperature, brightness, and screen coverage, plus a directional falloff that fades the light across the screen to shape your face the way a real light source does.",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "omakeylight",
+    "description": "Light your face on video calls with the desktop behind your windows.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {
+      "on": false,
+      "kelvin": 4300,
+      "brightness": 80,
+      "coverage": 100,
+      "falloffDepth": 0,
+      "falloffSize": 70,
+      "falloffCenter": 50,
+      "falloffDirection": "left"
+    },
+    "schema": [
+      {
+        "key": "on",
+        "type": "boolean",
+        "label": "Light on",
+        "defaultValue": false
+      },
+      {
+        "key": "kelvin",
+        "type": "integer",
+        "label": "Colour temperature (K)",
+        "min": 2000,
+        "max": 6500,
+        "step": 50,
+        "defaultValue": 4300
+      },
+      {
+        "key": "brightness",
+        "type": "integer",
+        "label": "Brightness (%)",
+        "min": 5,
+        "max": 100,
+        "step": 1,
+        "defaultValue": 80
+      },
+      {
+        "key": "coverage",
+        "type": "integer",
+        "label": "Screen coverage (%)",
+        "min": 25,
+        "max": 100,
+        "step": 5,
+        "defaultValue": 100
+      },
+      {
+        "key": "falloffDepth",
+        "type": "integer",
+        "label": "Falloff depth (%)",
+        "min": 0,
+        "max": 100,
+        "step": 5,
+        "defaultValue": 0
+      },
+      {
+        "key": "falloffSize",
+        "type": "integer",
+        "label": "Blend size (% of width)",
+        "min": 5,
+        "max": 200,
+        "step": 5,
+        "defaultValue": 70
+      },
+      {
+        "key": "falloffCenter",
+        "type": "integer",
+        "label": "Blend centre (% across)",
+        "min": 0,
+        "max": 100,
+        "step": 5,
+        "defaultValue": 50
+      },
+      {
+        "key": "falloffDirection",
+        "type": "string",
+        "label": "Bright side",
+        "options": ["left", "right"],
+        "defaultValue": "left"
+      }
+    ]
+  }
+}
