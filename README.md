@@ -22,7 +22,7 @@ omarchy plugin enable io.github.edmooredop.omakeylight
 Plugins land disabled so you can read the code before enabling it. The bulb
 appears on the right of the bar; click it to open the panel.
 
-No external dependencies, no installer, no system packages, no `sudo`. The
+No external dependencies, no installer, no system packages, no sudo. The
 plugin is QML and runs inside the Omarchy shell that is already running.
 
 ## Remove
