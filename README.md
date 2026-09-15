@@ -170,3 +170,24 @@ omarchy plugin validate .
 `Model.js` is deliberately free of QML imports so the colour maths is testable
 under plain Node. Saving any file here hot-reloads the plugin; if a change
 doesn't land, force it with `omarchy-shell shell rescanPlugins`.
+
+## Changelog
+
+### 1.0.1
+
+- **Fix: settings reverted to their previous value on multi-monitor setups.**
+  The bar mounts one widget per monitor and each one writes settings back.
+  The second monitor's widget compared against a stale copy of `shell.json`,
+  concluded the new value was wrong, and wrote the old one back — so a toggle
+  would switch itself off again, and slider changes would not stick.
+  Single-monitor machines were unaffected, which is how it shipped.
+- **Perf: settings writes are now deferred and coalesced.** Each write to
+  `shell.json` costs the shell a noticeable slice of GUI-thread time (every
+  bar widget on every monitor re-reads its config). It used to happen
+  synchronously before the light could repaint, so toggling felt laggy and
+  scrolling the bar icon stuttered. Writes now trail the last change by
+  300ms and a burst becomes one write. The light itself updates immediately.
+
+### 1.0.0
+
+- Initial release.

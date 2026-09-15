@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.edmooredop.omakeylight",
   "name": "omakeylight",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Ed Moore",
   "license": "MIT",
   "description": "Turns your monitor into a key light for video calls. Paints a warm-white layer above the wallpaper but below every window, so browsers and terminals stay usable on top of it. Adjustable colour temperature, brightness, and screen coverage, plus a directional falloff that fades the light across the screen to shape your face the way a real light source does.",

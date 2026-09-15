@@ -25,30 +25,77 @@ BarWidget {
   readonly property int falloffDepth: service ? service.falloffDepth : Model.clampFalloffDepth(setting("falloffDepth", 0))
 
   // Settings as they currently sit in shell.json, normalized.
-  readonly property var storedState: Model.normalizeSettings({
-    on: setting("on", false),
-    kelvin: setting("kelvin", 4300),
-    brightness: setting("brightness", 80),
-    coverage: setting("coverage", 100),
-    falloffDepth: setting("falloffDepth", 0),
-    falloffSize: setting("falloffSize", 70),
-    falloffCenter: setting("falloffCenter", 50),
-    falloffDirection: setting("falloffDirection", "left")
-  }, null)
+  //
+  // A function, not a bound property, and that matters. `onSettingsChanged`
+  // fires before a binding on `settings` has been re-evaluated, so a property
+  // read from inside that handler still holds the *previous* file contents.
+  // Adopting that into the service pushes the old value straight back over
+  // the change that was just persisted. Reading `settings` directly at the
+  // moment of use always sees the fresh entry.
+  function storedState() {
+    return Model.normalizeSettings({
+      on: setting("on", false),
+      kelvin: setting("kelvin", 4300),
+      brightness: setting("brightness", 80),
+      coverage: setting("coverage", 100),
+      falloffDepth: setting("falloffDepth", 0),
+      falloffSize: setting("falloffSize", 70),
+      falloffCenter: setting("falloffCenter", 50),
+      falloffDirection: setting("falloffDirection", "left")
+    }, null)
+  }
 
   // Push shell.json's values into the service. Runs when the service first
   // appears and whenever the file changes underneath us, so a hand edit of
   // shell.json takes effect live like every other Omarchy setting.
   function adoptStored() {
-    if (service) service.adopt(root.storedState)
+    if (service) service.adopt(root.storedState())
   }
 
-  // Write the service's live values back to shell.json. Skipped when nothing
-  // actually differs so a no-op mutation doesn't dirty the file.
-  function persist() {
+  // Write the service's live values back to shell.json — after a short pause.
+  //
+  // Each write is expensive out of all proportion to the light: the host
+  // re-serialises shell.json and every bar widget on every monitor re-reads
+  // its config, roughly a quarter-second of GUI-thread work on a laptop CPU.
+  // Done synchronously from `changed()` that lands *before* the frame showing
+  // the new light can paint, so a toggle looks like it hangs and a slider
+  // drag or a wheel-scroll on the bar icon stutters through dozens of writes.
+  //
+  // Deferring puts the pixels first and folds a burst into one write at the
+  // end. The light itself updates instantly either way — it reads the service
+  // directly, not the file.
+  Timer {
+    id: persistTimer
+    interval: 300
+    onTriggered: root.persistNow()
+  }
+
+  function persist() { persistTimer.restart() }
+
+  // A pending write must not be lost to a shell restart or plugin reload.
+  Component.onDestruction: {
+    if (persistTimer.running) {
+      persistTimer.stop()
+      persistNow()
+    }
+  }
+
+  // Skipped when nothing actually differs so a no-op mutation doesn't dirty
+  // the file.
+  //
+  // The bar mounts one of these widgets per monitor, and every one of them
+  // hears the service's `changed()`. The first to run writes the file and the
+  // host synchronously pushes the new entry to all of them; by the time the
+  // others get their turn the stored state already matches and they fall out
+  // at the equality check. That only holds if `storedState()` is read fresh,
+  // which is why it is a function — see above. With a stale read, the second
+  // monitor's widget would find a mismatch and write the *old* value back,
+  // undoing the toggle. Single-monitor machines never see that path, which
+  // is how it went unnoticed.
+  function persistNow() {
     if (!service) return
     var next = service.state()
-    if (Model.settingsEqual(next, root.storedState)) return
+    if (Model.settingsEqual(next, root.storedState())) return
 
     var entry = { id: root.moduleName }
     for (var key in root.settings) if (key !== "id") entry[key] = root.settings[key]
