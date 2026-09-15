@@ -76,6 +76,12 @@ Item {
   property int falloffCenter: 50
   property string falloffDirection: "left"
 
+  // Treat every attached monitor as one light source. When on, the falloff
+  // runs once across the whole arrangement, each monitor painting its own
+  // slice, so the ramp is continuous across the bezel. When off, each monitor
+  // gets the full ramp independently — the 1.0 behaviour.
+  property bool spanMonitors: true
+
   signal changed()
 
   readonly property color lightColor: Model.lightColor(root.kelvin, root.brightness)
@@ -97,7 +103,8 @@ Item {
       && next.brightness === root.brightness && next.coverage === root.coverage
       && next.falloffDepth === root.falloffDepth && next.falloffSize === root.falloffSize
       && next.falloffCenter === root.falloffCenter
-      && next.falloffDirection === root.falloffDirection) return
+      && next.falloffDirection === root.falloffDirection
+      && next.spanMonitors === root.spanMonitors) return
     root.on = next.on
     root.kelvin = next.kelvin
     root.brightness = next.brightness
@@ -106,6 +113,7 @@ Item {
     root.falloffSize = next.falloffSize
     root.falloffCenter = next.falloffCenter
     root.falloffDirection = next.falloffDirection
+    root.spanMonitors = next.spanMonitors
   }
 
   function state() {
@@ -117,7 +125,8 @@ Item {
       falloffDepth: root.falloffDepth,
       falloffSize: root.falloffSize,
       falloffCenter: root.falloffCenter,
-      falloffDirection: root.falloffDirection
+      falloffDirection: root.falloffDirection,
+      spanMonitors: root.spanMonitors
     }
   }
 
@@ -186,6 +195,15 @@ Item {
     setFalloffDirection(Model.flipDirection(root.falloffDirection))
   }
 
+  function setSpanMonitors(value) {
+    var next = Model.clampSpanMonitors(value, root.spanMonitors)
+    if (next === root.spanMonitors) return
+    root.spanMonitors = next
+    root.changed()
+  }
+
+  function toggleSpanMonitors() { setSpanMonitors(!root.spanMonitors) }
+
   // ---- IPC ---------------------------------------------------------------
   // Bindable from Hyprland, e.g.
   //   o.bind("SUPER SHIFT", "L", "exec", "omarchy-shell keylight toggle")
@@ -207,11 +225,28 @@ Item {
     function setFalloffCenter(value: string): string { root.setFalloffCenter(value); return String(root.falloffCenter) }
     function setFalloffDirection(value: string): string { root.setFalloffDirection(value); return root.falloffDirection }
     function flipFalloff(): string { root.flipFalloff(); return root.falloffDirection }
+    function setSpanMonitors(value: string): string { root.setSpanMonitors(value); return root.spanMonitors ? "true" : "false" }
+    function toggleSpanMonitors(): string { root.toggleSpanMonitors(); return root.spanMonitors ? "true" : "false" }
     function status(): string { return JSON.stringify(root.state()) }
     function ping(): string { return "ok" }
   }
 
   Component.onCompleted: hydrateFromConfig()
+
+  // Every attached monitor's horizontal extent in layout space, in one plain
+  // list so the per-monitor slice can be worked out with no QML types in the
+  // maths. Rebuilt whenever a monitor comes, goes, or moves.
+  readonly property var screenRects: {
+    var out = []
+    var list = Quickshell.screens
+    for (var i = 0; i < list.length; i++) {
+      var s = list[i]
+      // Reading x/width here is what makes this binding re-evaluate when the
+      // layout changes; do not hoist them out.
+      out.push({ name: s.name, x: s.x, width: s.width })
+    }
+    return out
+  }
 
   // ---- the surface -------------------------------------------------------
 
@@ -282,18 +317,26 @@ Item {
         readonly property int center: root.falloffCenter
         readonly property string direction: root.falloffDirection
 
+        // Which slice of the overall light this monitor shows. Full span when
+        // monitors are independent or when there is only one of them.
+        readonly property var span: root.spanMonitors && panel.screen
+          ? Model.screenSpan(root.screenRects, { x: panel.screen.x, width: panel.screen.width })
+          : { from: 0, to: 1 }
+
         onTintChanged: requestPaint()
         onDepthChanged: requestPaint()
         onSizeChanged: requestPaint()
         onCenterChanged: requestPaint()
         onDirectionChanged: requestPaint()
+        onSpanChanged: requestPaint()
 
         onPaint: {
           var ctx = getContext("2d")
           ctx.clearRect(0, 0, width, height)
 
           var gradient = ctx.createLinearGradient(0, 0, width, 0)
-          var stops = Model.falloffStops(depth, size, center, direction)
+          var stops = Model.falloffStops(depth, size, center, direction,
+            undefined, span.from, span.to)
           for (var i = 0; i < stops.length; i++) {
             var level = stops[i].level
             gradient.addColorStop(stops[i].position,

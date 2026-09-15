@@ -28,7 +28,15 @@ Panel {
   readonly property int falloffSize: service ? service.falloffSize : 70
   readonly property int falloffCenter: service ? service.falloffCenter : 50
   readonly property string falloffDirection: service ? service.falloffDirection : "left"
+  readonly property bool spanMonitors: service ? service.spanMonitors === true : true
   readonly property bool falloffActive: falloffDepth > 0
+
+  // Monitor arrangement, for the preview. Only shown when there is more than
+  // one and they are being treated as one light; otherwise the row is hidden
+  // rather than left as a dead control.
+  readonly property var screenRects: service && service.screenRects ? service.screenRects : []
+  readonly property bool multiMonitor: screenRects.length > 1
+  readonly property var seams: multiMonitor && spanMonitors ? Model.screenSeams(screenRects) : []
 
   readonly property color foreground: bar ? bar.foreground : Color.foreground
   readonly property color dim: Qt.darker(foreground, 1.55)
@@ -37,7 +45,7 @@ Panel {
   // Sections, top to bottom. Each slider is a single row, so j/k moves
   // between them and h/l adjusts within one.
   readonly property var sections: ["power", "temperature", "brightness", "coverage",
-    "falloff", "falloffSize", "falloffCenter", "direction"]
+    "falloff", "falloffSize", "falloffCenter", "direction", "span"]
   property string focusSection: "power"
   property bool cursorActive: false
 
@@ -57,11 +65,13 @@ Panel {
     else if (focusSection === "falloffSize") service.setFalloffSize(falloffSize + dx * 5)
     else if (focusSection === "falloffCenter") service.setFalloffCenter(falloffCenter + dx * 5)
     else if (focusSection === "direction") service.flipFalloff()
+    else if (focusSection === "span") service.toggleSpanMonitors()
   }
 
   function activateCursor() {
     if (focusSection === "power" && service) service.toggle()
     else if (focusSection === "direction" && service) service.flipFalloff()
+    else if (focusSection === "span" && service) service.toggleSpanMonitors()
   }
 
   function setCursor(section) {
@@ -252,6 +262,21 @@ Panel {
               ? root.falloffCenter / 100 : 1 - root.falloffCenter / 100))
             color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.5)
           }
+
+          // Bezels. When the monitors are one light, the preview is the whole
+          // arrangement and these show where one screen ends and the next
+          // begins, so "centre 50%" can be read against real hardware.
+          Repeater {
+            model: root.seams
+            delegate: Rectangle {
+              required property real modelData
+              width: 2
+              height: parent.height
+              x: Math.round((parent.width - 2) * modelData)
+              color: bar ? bar.background : Color.background
+              opacity: 0.85
+            }
+          }
         }
 
         SliderRow {
@@ -324,6 +349,48 @@ Panel {
             fontFamily: root.fontFamily
             onChanged: function(value) { if (root.service) root.service.setFalloffDirection(value) }
             onHovered: function(index, isHovered) { if (isHovered) root.setCursor("direction") }
+          }
+        }
+
+        // Only meaningful with two or more monitors; hidden otherwise so a
+        // laptop on its own doesn't carry a switch that does nothing.
+        Column {
+          width: parent.width
+          spacing: Style.space(5)
+          visible: root.multiMonitor
+          opacity: root.falloffActive ? 1 : 0.45
+          bottomPadding: Style.space(2)
+
+          Behavior on opacity { NumberAnimation { duration: 140 } }
+
+          PanelSeparator { foreground: root.foreground }
+
+          Item {
+            width: parent.width
+            implicitHeight: Math.max(spanTitle.implicitHeight, spanSwitch.implicitHeight)
+
+            PanelSectionHeader {
+              id: spanTitle
+              anchors.left: parent.left
+              anchors.right: spanSwitch.left
+              anchors.rightMargin: Style.space(8)
+              anchors.verticalCenter: parent.verticalCenter
+              text: "ONE LIGHT ACROSS " + root.screenRects.length + " MONITORS"
+              elide: Text.ElideRight
+              foreground: root.foreground
+              fontFamily: root.fontFamily
+            }
+
+            ToggleSwitch {
+              id: spanSwitch
+              anchors.right: parent.right
+              anchors.verticalCenter: parent.verticalCenter
+              checked: root.spanMonitors
+              hasCursor: root.cursorActive && root.focusSection === "span"
+              foreground: root.foreground
+              onHovered: function(on) { if (on) root.setCursor("span") }
+              onToggled: if (root.service) root.service.toggleSpanMonitors()
+            }
           }
         }
       }

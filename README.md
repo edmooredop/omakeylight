@@ -49,6 +49,7 @@ Click the bulb in the bar to open the panel:
 | Blend size | 5–200% | How much screen width the transition takes |
 | Blend centre | 0–100% | Where the middle of the transition sits |
 | Light from | left/right | Which side stays bright |
+| One light across N monitors | on/off | Multi-monitor only. Run the falloff once across the whole arrangement (on) or once per monitor (off) |
 
 Coverage measures **down from the top of the screen**, because a camera above
 the monitor wants light on your face rather than on your desk. Drop it to
@@ -77,6 +78,28 @@ two agreeing looks natural, fighting each other does not.
 
 The curve is a smoothstep rather than a straight line, so there is no visible
 start or stop to the blend, just light falling away.
+
+### More than one monitor
+
+With two or more monitors attached the plugin treats them as **one light**
+by default: the falloff runs once across the whole arrangement, and each
+monitor paints its own slice of it. Put the bright side on the left, and the
+left monitor is lit while the right one falls away — a continuous ramp across
+the bezel, rather than two copies of the same gradient side by side.
+
+The slice is worked out from the compositor's layout, so it follows whatever
+`hyprctl monitors` says: unequal widths, an ultrawide beside a laptop panel,
+a monitor to the left of the primary at negative x. Monitors stacked
+vertically share the same horizontal slice. Plugging a monitor in or out
+re-splits the light live.
+
+The falloff preview in the panel becomes the whole arrangement when this is
+on, with a dark line marking each bezel, so "blend centre 50%" can be read
+against the real hardware.
+
+Switch it off with **One light across N monitors** at the bottom of the panel
+(only shown when there is more than one), or `omarchy-shell keylight
+setSpanMonitors false`, and each monitor gets the full ramp independently.
 
 Shortcuts on the bar icon itself:
 
@@ -121,6 +144,8 @@ Full method list:
 | `omarchy-shell keylight setFalloffCenter 40` | Set blend centre |
 | `omarchy-shell keylight setFalloffDirection right` | Set the bright side |
 | `omarchy-shell keylight flipFalloff` | Swap which side is lit |
+| `omarchy-shell keylight setSpanMonitors false` | Each monitor gets its own full ramp (default `true`: one light across all) |
+| `omarchy-shell keylight toggleSpanMonitors` | Flip the above |
 | `omarchy-shell keylight status` | Current state as JSON |
 
 Every route clamps to the supported range, so a bad value is corrected rather
@@ -140,7 +165,8 @@ State lives in the widget's `shell.json` entry and survives restarts:
   "falloffDepth": 50,
   "falloffSize": 120,
   "falloffCenter": 50,
-  "falloffDirection": "left"
+  "falloffDirection": "left",
+  "spanMonitors": true
 }
 ```
 
@@ -172,6 +198,17 @@ under plain Node. Saving any file here hot-reloads the plugin; if a change
 doesn't land, force it with `omarchy-shell shell rescanPlugins`.
 
 ## Changelog
+
+### 1.1.0
+
+- **Multi-monitor: one light across all screens.** The falloff now runs once
+  across the whole monitor arrangement by default, each monitor painting its
+  own slice, so a left-lit key is bright on the left screen and falls away
+  across the right one instead of every screen showing the same gradient.
+  Follows the compositor layout (unequal widths, negative origins, stacked
+  monitors) and re-splits live on hotplug. New `spanMonitors` setting,
+  panel switch (hidden on single-monitor), and IPC `setSpanMonitors` /
+  `toggleSpanMonitors`. The panel's falloff preview shows bezel markers.
 
 ### 1.0.1
 

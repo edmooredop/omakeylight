@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "io.github.edmooredop.omakeylight",
   "name": "omakeylight",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "author": "Ed Moore",
   "license": "MIT",
   "description": "Turns your monitor into a key light for video calls. Paints a warm-white layer above the wallpaper but below every window, so browsers and terminals stay usable on top of it. Adjustable colour temperature, brightness, and screen coverage, plus a directional falloff that fades the light across the screen to shape your face the way a real light source does.",
@@ -28,7 +28,8 @@
       "falloffDepth": 0,
       "falloffSize": 70,
       "falloffCenter": 50,
-      "falloffDirection": "left"
+      "falloffDirection": "left",
+      "spanMonitors": true
     },
     "schema": [
       {
@@ -97,6 +98,12 @@
         "label": "Bright side",
         "options": ["left", "right"],
         "defaultValue": "left"
+      },
+      {
+        "key": "spanMonitors",
+        "type": "boolean",
+        "label": "One light across all monitors",
+        "defaultValue": true
       }
     ]
   }

@@ -41,7 +41,8 @@ BarWidget {
       falloffDepth: setting("falloffDepth", 0),
       falloffSize: setting("falloffSize", 70),
       falloffCenter: setting("falloffCenter", 50),
-      falloffDirection: setting("falloffDirection", "left")
+      falloffDirection: setting("falloffDirection", "left"),
+      spanMonitors: setting("spanMonitors", true)
     }, null)
   }
 
@@ -107,6 +108,7 @@ BarWidget {
     entry.falloffSize = next.falloffSize
     entry.falloffCenter = next.falloffCenter
     entry.falloffDirection = next.falloffDirection
+    entry.spanMonitors = next.spanMonitors
 
     // Applied locally first so the bar icon updates on the click itself; the
     // write comes back through the host as the same value.

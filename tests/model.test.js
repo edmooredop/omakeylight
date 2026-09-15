@@ -87,18 +87,21 @@ test("normalizeSettings survives garbage from a hand-edited shell.json", () => {
   }, null)
   assert.deepStrictEqual(state, {
     on: true, kelvin: 4300, brightness: Model.MIN_BRIGHTNESS, coverage: Model.MAX_COVERAGE,
-    falloffDepth: 0, falloffSize: 70, falloffCenter: 50, falloffDirection: "left"
+    falloffDepth: 0, falloffSize: 70, falloffCenter: 50, falloffDirection: "left",
+    spanMonitors: true
   })
 })
 
 test("normalizeSettings falls back to manifest defaults when a key is absent", () => {
   const state = Model.normalizeSettings({}, {
     on: true, kelvin: 3000, brightness: 60, coverage: 75,
-    falloffDepth: 40, falloffSize: 90, falloffCenter: 30, falloffDirection: "right"
+    falloffDepth: 40, falloffSize: 90, falloffCenter: 30, falloffDirection: "right",
+    spanMonitors: false
   })
   assert.deepStrictEqual(state, {
     on: true, kelvin: 3000, brightness: 60, coverage: 75,
-    falloffDepth: 40, falloffSize: 90, falloffCenter: 30, falloffDirection: "right"
+    falloffDepth: 40, falloffSize: 90, falloffCenter: 30, falloffDirection: "right",
+    spanMonitors: false
   })
 })
 

@@ -184,7 +184,13 @@ function falloffLevelAt(position, depth, size, center, direction) {
 }
 
 // The gradient as QML-ready stops: `{ position, level }`, position 0-1 across
-// the screen and level a 0-1 brightness multiplier.
+// the surface and level a 0-1 brightness multiplier.
+//
+// `from`/`to` (optional, default 0/1) say which slice of the overall light
+// this surface shows. With several monitors treated as one light source, the
+// left monitor might cover 0-0.6 of the whole span and the right one 0.6-1;
+// each then paints its own slice and the ramp runs continuously across the
+// seam. Position stays 0-1 in surface space; only the sampled level moves.
 //
 // Always returns exactly `sampleCount` stops at uniform positions. A fixed
 // length matters for the QML side: gradient stops have to be declared as real
@@ -194,17 +200,78 @@ function falloffLevelAt(position, depth, size, center, direction) {
 //
 // QML interpolates linearly between stops, so enough of them are emitted that
 // the straight segments are far shorter than the eye can pick out as banding.
-function falloffStops(depth, size, center, direction, sampleCount) {
+function falloffStops(depth, size, center, direction, sampleCount, from, to) {
   var samples = Math.max(2, Math.round(Number(sampleCount) || STOP_COUNT))
+  var lo = clampNumber(from, 0, 1, 0)
+  var hi = clampNumber(to, 0, 1, 1)
   var stops = []
   for (var i = 0; i < samples; i++) {
     var position = i / (samples - 1)
     stops.push({
       position: position,
-      level: falloffLevelAt(position, depth, size, center, direction)
+      level: falloffLevelAt(lo + position * (hi - lo), depth, size, center, direction)
     })
   }
   return stops
+}
+
+// Where one screen sits, horizontally, within the arrangement of all of them.
+//
+// `screens` is a list of `{ x, width }` rectangles in layout coordinates (the
+// compositor's global space, where a second monitor to the right starts at
+// x = first monitor's width). Returns `{ from, to }` as fractions of the
+// overall span, ready to hand to `falloffStops`. A screen that is not in the
+// list, or an empty list, gets the whole span — the safe answer, and also
+// exactly what a single-monitor setup wants.
+//
+// Only the horizontal axis matters because the falloff is horizontal: a
+// monitor stacked above another shares its column and gets the same slice.
+function screenSpan(screens, screen) {
+  var list = Array.isArray(screens) ? screens : []
+  var minX = Infinity
+  var maxX = -Infinity
+  for (var i = 0; i < list.length; i++) {
+    var s = list[i]
+    if (!s) continue
+    var x = Number(s.x)
+    var w = Number(s.width)
+    if (!isFinite(x) || !isFinite(w) || w <= 0) continue
+    minX = Math.min(minX, x)
+    maxX = Math.max(maxX, x + w)
+  }
+  var total = maxX - minX
+  if (!screen || !isFinite(total) || total <= 0) return { from: 0, to: 1 }
+  var sx = Number(screen.x)
+  var sw = Number(screen.width)
+  if (!isFinite(sx) || !isFinite(sw) || sw <= 0) return { from: 0, to: 1 }
+  return {
+    from: clampNumber((sx - minX) / total, 0, 1, 0),
+    to: clampNumber((sx + sw - minX) / total, 0, 1, 1)
+  }
+}
+
+// Seam positions between monitors, as fractions of the overall span, for the
+// panel preview to mark. Excludes the outer edges; a single monitor yields [].
+function screenSeams(screens) {
+  var list = Array.isArray(screens) ? screens : []
+  var seams = []
+  for (var i = 0; i < list.length; i++) {
+    var span = screenSpan(list, list[i])
+    if (span.from > 0 && span.from < 1) seams.push(span.from)
+    if (span.to > 0 && span.to < 1) seams.push(span.to)
+  }
+  seams.sort(function(a, b) { return a - b })
+  var unique = []
+  for (var j = 0; j < seams.length; j++) {
+    if (!unique.length || Math.abs(seams[j] - unique[unique.length - 1]) > 1e-6) unique.push(seams[j])
+  }
+  return unique
+}
+
+function clampSpanMonitors(value, fallback) {
+  if (value === true || value === "true") return true
+  if (value === false || value === "false") return false
+  return fallback === false ? false : true
 }
 
 // Plain-language name for a temperature, so the panel says something more
@@ -273,7 +340,8 @@ function normalizeSettings(settings, defaults) {
     falloffDepth: clampFalloffDepth(raw.falloffDepth, clampFalloffDepth(base.falloffDepth, 0)),
     falloffSize: clampFalloffSize(raw.falloffSize, clampFalloffSize(base.falloffSize, 70)),
     falloffCenter: clampFalloffCenter(raw.falloffCenter, clampFalloffCenter(base.falloffCenter, 50)),
-    falloffDirection: clampDirection(raw.falloffDirection, clampDirection(base.falloffDirection, "left"))
+    falloffDirection: clampDirection(raw.falloffDirection, clampDirection(base.falloffDirection, "left")),
+    spanMonitors: clampSpanMonitors(raw.spanMonitors, clampSpanMonitors(base.spanMonitors, true))
   }
 }
 
@@ -284,6 +352,7 @@ function settingsEqual(a, b) {
     && a.falloffDepth === b.falloffDepth && a.falloffSize === b.falloffSize
     && a.falloffCenter === b.falloffCenter
     && a.falloffDirection === b.falloffDirection
+    && a.spanMonitors === b.spanMonitors
 }
 
 // Step a value by whole notches, snapped to the step grid so repeated
@@ -328,6 +397,9 @@ if (typeof module !== "undefined" && module.exports) {
     smoothstep: smoothstep,
     falloffLevelAt: falloffLevelAt,
     falloffStops: falloffStops,
+    screenSpan: screenSpan,
+    screenSeams: screenSeams,
+    clampSpanMonitors: clampSpanMonitors,
     falloffDepthLabel: falloffDepthLabel,
     falloffSizeLabel: falloffSizeLabel,
     falloffCenterLabel: falloffCenterLabel,
