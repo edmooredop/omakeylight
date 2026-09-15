@@ -375,7 +375,7 @@ Panel {
               anchors.right: spanSwitch.left
               anchors.rightMargin: Style.space(8)
               anchors.verticalCenter: parent.verticalCenter
-              text: "ONE LIGHT ACROSS " + root.screenRects.length + " MONITORS"
+              text: "TREAT ALL MONITORS AS ONE SOURCE"
               elide: Text.ElideRight
               foreground: root.foreground
               fontFamily: root.fontFamily

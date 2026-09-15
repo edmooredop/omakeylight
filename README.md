@@ -49,7 +49,7 @@ Click the bulb in the bar to open the panel:
 | Blend size | 5–200% | How much screen width the transition takes |
 | Blend centre | 0–100% | Where the middle of the transition sits |
 | Light from | left/right | Which side stays bright |
-| One light across N monitors | on/off | Multi-monitor only. Run the falloff once across the whole arrangement (on) or once per monitor (off) |
+| Treat all monitors as one source | on/off | Multi-monitor only. Run the falloff once across the whole arrangement (on) or once per monitor (off) |
 
 Coverage measures **down from the top of the screen**, because a camera above
 the monitor wants light on your face rather than on your desk. Drop it to
@@ -97,7 +97,7 @@ The falloff preview in the panel becomes the whole arrangement when this is
 on, with a dark line marking each bezel, so "blend centre 50%" can be read
 against the real hardware.
 
-Switch it off with **One light across N monitors** at the bottom of the panel
+Switch it off with **Treat all monitors as one source** at the bottom of the panel
 (only shown when there is more than one), or `omarchy-shell keylight
 setSpanMonitors false`, and each monitor gets the full ramp independently.
 
@@ -198,6 +198,11 @@ under plain Node. Saving any file here hot-reloads the plugin; if a change
 doesn't land, force it with `omarchy-shell shell rescanPlugins`.
 
 ## Changelog
+
+### 1.1.1
+
+- Panel: the multi-monitor switch is now labelled **Treat all monitors as one
+  source**. No behaviour change.
 
 ### 1.1.0
 
